@@ -3,9 +3,9 @@
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
-#define DS3231_I2C_ADDRESS 0x68
-#define LEDPIN            4
-#define NUMPIXELS      42
+#define DS3231_I2C_ADDRESS  0x68
+#define LEDPIN              4
+#define NUMPIXELS           42
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 
@@ -28,7 +28,8 @@ int hours=0;
 int minutes=0;
 long totalsec=0L;
 
-int LEDStates[42];
+// array that keeps track if the LED is ON or OFF
+int LEDStates[NUMPIXELS];
 
 const int buttonPin1 = 2;
 const int buttonPin2 = 3;     
@@ -48,10 +49,11 @@ byte currYear;
 
 int intensity=95;
 int colorIdx=0;
-int N_colors=8;
+const int N_colors=8;
 
-int currRGB[3]={255,255,255};
-int colorScheme[8][3]=
+int currRGB[3]={255,255,255}; // Starting color
+// array of colors that can be extended. Also change the fixe size of the array if appending colors
+int colorScheme[N_colors][3]=  
   {
   {255,255,255},
   {255,0,0},
@@ -68,6 +70,7 @@ void setup() {
   
   pixels.begin();
 
+  // Define buttons
   pinMode(buttonPin1, INPUT);
   pinMode(buttonPin2, INPUT);
 
@@ -82,14 +85,15 @@ void setup() {
   {
     LEDStates[i]=0;
   }
-    // First time setting
+  
+  // First time setting: uncomment the follwing line to set the time by code
   //setDS3231time(30, 02, 23, 5, 10, 11, 16);
 
   // Play Startup Sequence
   startUpSequence();  
 
-  // Read current time from module;
-  //readDS3231time(&currSecond, &currMinute, &currHour, &currDay, &currDate, &currMonth, &currYear);
+  // Read current time from module: comment the follwing line if you want to intially set th time by code
+  readDS3231time(&currSecond, &currMinute, &currHour, &currDay, &currDate, &currMonth, &currYear);
 
   // Start Clocktimer
   clockTimerStart=millis();
@@ -115,7 +119,7 @@ void loop() {
     }
     if (timerEnd) {
       // Go into clock setting mode
-      // Make LEd Animation to notify user entering clock mode
+      // Make LEd Animation to notify the user entering clock mode
       SettingNotifier();
       updateLEDMatrix(LEDStates,currRGB);
       Serial.println("... for 3 seconds");
@@ -146,7 +150,7 @@ void loop() {
           }
           if (timerEnd)
           {
-            //Write current setting to clock module
+            //Write current setting to clock module and leave setting mode
             currSecond=0;  
             setDS3231time(currSecond, currMinute, currHour, currDay, currDate, currMonth, currYear);
             Serial.println("... new time written to clock module. ... Leaving Clock setting mode");
@@ -184,6 +188,7 @@ void loop() {
 
         
       }
+      // play sequence to inform the user that he's leaving setting mode
       SettingNotifier();
     }
     else
@@ -209,6 +214,7 @@ void loop() {
   } 
 
   if (buttonState2 == HIGH) {
+    // set to next color in colorscheme
     Serial.println("Button 2 was pressed");
     Serial.println (" Color scheme changed ");
     colorIdx=(colorIdx+1)%N_colors;
@@ -232,7 +238,7 @@ void loop() {
   if (Serial.available()>0)
   {
     if (Serial.readString()=="H"){
-      // Display time
+    // Display time
     displayTime(currSecond, currMinute, currHour, currDay, currDate, currMonth, currYear);
     Serial.print("LED states: ");
     for(i=0;i<42;i++)
@@ -245,7 +251,7 @@ void loop() {
   }
 
 
-  // Check clock to update time 
+  // Check if its time to update the clock 
   clockTimerCurr=millis();
   if (abs(clockTimerCurr-clockTimerStart)>CL*1000)
   {
@@ -255,18 +261,9 @@ void loop() {
     totalsec=currSecond+currMinute*60L+currHour*3600L;    // could be polished
     //setLEDStates(LEDStates,giveHour(totalsec),giveMinutes(totalsec));
     setLEDStates(LEDStates,giveHour(totalsec),giveMinutes(totalsec));
-
-
-    
+    // update the LED Matrix
     updateLEDMatrix(LEDStates,currRGB);
-    
-    // Show time needed for update
-    //Serial.print("Time needed to calulate LEDstates: ");
-    //Serial.print(micros()-clockTimerCurr*1000);
-    //Serial.println(" us");
-
-    
-    
+    // restart the timer
     clockTimerStart=millis(); 
   }
 }
@@ -356,18 +353,13 @@ int giveMinutes(long sec){
   else
   {
     minutes=sec/(300)+1;
-    //if (sec%300==149)
-    //{
-      //minutes++;
-    //}
-
     minutes*=5;
     return minutes; 
   }
 }
 
 // Gives back an array of the LEDs that have to be lit 
-void setLEDStates(int states[42], int hour,int minutes){
+void setLEDStates(int states[NUMPIXELS], int hour,int minutes){
    // reset the LEDS
   for(i=0;i<3;i++)
   {
